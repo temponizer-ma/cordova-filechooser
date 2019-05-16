@@ -4,10 +4,13 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.util.Log;
+import android.provider.OpenableColumns;
+import android.database.Cursor;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.PluginResult;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -63,9 +66,34 @@ public class FileChooser extends CordovaPlugin {
                 Uri uri = data.getData();
 
                 if (uri != null) {
+                    JSONObject jsonObject = new JSONObject();
 
-                    Log.w(TAG, uri.toString());
-                    callback.success(uri.toString());
+                    try {
+                        jsonObject.put("uri", uri.toString());
+                        Log.w(TAG, uri.toString());
+
+                        try {
+                            Cursor cursor = cordova.getActivity().getContentResolver().query(uri, null, null, null, null, null);
+                            if (cursor != null && cursor.moveToFirst()) {
+                                String displayName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                                jsonObject.put("name", displayName);
+                                Log.i(TAG, "Display Name: " + displayName);
+
+                                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+                                int size = -1;
+                                if (!cursor.isNull(sizeIndex)) {
+                                    size = cursor.getInt(sizeIndex);
+                                }
+                                jsonObject.put("size", size);
+                                Log.i(TAG, "Size: " + size);
+                            }
+                        } catch (Exception e) {}
+                    } catch (JSONException e) {
+                        callback.error("JSON error");
+                        return;
+                    }
+
+                    callback.success(jsonObject);
 
                 } else {
 
